@@ -1,4 +1,4 @@
-package parser
+package main
 
 import "fmt"
 
@@ -41,8 +41,8 @@ const (
 )
 
 type location struct {
-	row int
-	col int
+	row uint
+	col uint
 }
 
 func (l *location) String() string {
@@ -56,8 +56,8 @@ type token struct {
 }
 
 type cursor struct {
-	p   uint
-	loc location
+	pointer uint
+	loc     location
 }
 
 func (t *token) equals(other *token) bool {
