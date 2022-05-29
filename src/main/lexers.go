@@ -12,6 +12,7 @@ const (
 	tableKeyword  keyword = "table"
 	createKeyword keyword = "create"
 	insertKeyword keyword = "insert"
+	intoKeyword   keyword = "into"
 	valuesKeyword keyword = "values"
 	updateKeyword keyword = "update"
 	deleteKeyword keyword = "delete"
@@ -23,11 +24,12 @@ const (
 type symbol string
 
 const (
-	semiconlonSymbol symbol = ";"
+	semicolonSymbol  symbol = ";"
 	commaSymbol      symbol = ","
 	asteriskSymbol   symbol = "*"
 	leftparenSymbol  symbol = "("
 	rightparenSymbol symbol = ")"
+	concatSymbol     symbol = "+"
 )
 
 type tokenKind uint
@@ -36,8 +38,10 @@ const (
 	keywordKind tokenKind = iota
 	symbolKind
 	identifierKind
+
 	stringKind
 	numericKind
+	boolKind
 )
 
 type location struct {

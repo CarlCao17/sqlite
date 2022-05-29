@@ -12,7 +12,7 @@ var (
 		string(commaSymbol),
 		string(leftparenSymbol),
 		string(rightparenSymbol),
-		string(semiconlonSymbol),
+		string(semicolonSymbol),
 		string(asteriskSymbol),
 	}
 	keywords = []string{

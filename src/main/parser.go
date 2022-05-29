@@ -14,7 +14,7 @@ func Parse(source string) (*AST, error) {
 	ast := AST{}
 	cursor := uint(0)
 	for cursor < uint(len(tokens)) {
-		stmt, newCursor, ok := parseStatement(tokens, cursor, tokenFromSymbol(semiconlonSymbol))
+		stmt, newCursor, ok := parseStatement(tokens, cursor, tokenFromSymbol(semicolonSymbol))
 		if !ok {
 			helpMessage(tokens, cursor, "Expect statement")
 			return nil, errors.New("failed to parse, expect statement")
@@ -23,7 +23,7 @@ func Parse(source string) (*AST, error) {
 
 		ast.Statements = append(ast.Statements, stmt)
 		atLeastOneSemicolon := false
-		for expectToken(tokens, cursor, tokenFromSymbol(semiconlonSymbol)) {
+		for expectToken(tokens, cursor, tokenFromSymbol(semicolonSymbol)) {
 			cursor++
 			atLeastOneSemicolon = true
 		}
@@ -103,6 +103,125 @@ func parseSelectStatement(tokens []*token, initialCursor uint, delimiter token) 
 
 }
 
+// parseInsertStatement parse INSERT statement, it will follow the pattern:
+// INSERT
+// INTO
+// $table_name
+// VALUES
+// (
+// $expression [, ...]
+// )
+func parseInsertStatement(tokens []*token, initialCursor uint, delimiter token) (*InsertStatement, uint, bool) {
+	if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
+		return nil, initialCursor, false
+	}
+	cursor := initialCursor
+	// Look for INSERT
+	if !expectToken(tokens, cursor, tokenFromKeyword(insertKeyword)) {
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	// Look for INTO
+	if !expectToken(tokens, cursor, tokenFromKeyword(intoKeyword)) {
+		helpMessage(tokens, cursor, "Expected into")
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	// Look for table name
+	table, newCursor, ok := parseToken(tokens, cursor, identifierKind)
+	if !ok {
+		helpMessage(tokens, cursor, "Expected table name")
+		return nil, initialCursor, false
+	}
+	cursor = newCursor
+
+	// Look for VALUES
+	if !expectToken(tokens, cursor, tokenFromKeyword(valuesKeyword)) {
+		helpMessage(tokens, cursor, "Expected values")
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	// Look for left paren
+	if !expectToken(tokens, cursor, tokenFromSymbol(leftparenSymbol)) {
+		helpMessage(tokens, cursor, "Expected '('")
+	}
+	cursor++
+
+	// Look for expression list
+	values, newCursor, ok := parseExpressions(tokens, cursor, []token{tokenFromSymbol(rightparenSymbol)})
+	if !ok {
+		return nil, initialCursor, false
+	}
+	cursor = newCursor
+
+	// Look for right paren
+	if !expectToken(tokens, cursor, tokenFromSymbol(rightparenSymbol)) {
+		helpMessage(tokens, cursor, "Expected ')'")
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	return &InsertStatement{
+		table:  *table,
+		values: values,
+	}, cursor, true
+}
+
+// parseCreateTableStatement parse CREATE statement, it will follow the pattern
+// CREATE TABLE
+// $table_name
+// (
+// [$column_name $column_type [,...]]
+// )
+func parseCreateTableStatement(tokens []*token, initialCursor uint, delimiters token) (*CreateTableStatement, uint, bool) {
+	if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
+		return nil, initialCursor, false
+	}
+	cursor := initialCursor
+
+	// Look for CREATE TABLE
+	if !expectToken(tokens, cursor, tokenFromKeyword(createKeyword)) || !expectToken(tokens, cursor, tokenFromKeyword(tableKeyword)) {
+		return nil, initialCursor, false
+	}
+	cursor += 2
+
+	// Look for table name
+	tableName, newCursor, ok := parseToken(tokens, cursor, identifierKind)
+	if !ok {
+		helpMessage(tokens, cursor, "Expected table name")
+		return nil, initialCursor, false
+	}
+	cursor = newCursor
+
+	// Look for left paren
+	if !expectToken(tokens, cursor, tokenFromSymbol(leftparenSymbol)) {
+		helpMessage(tokens, cursor, "Expected left parenthesis '('")
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	// Look for column definitions
+	cols, newCursor, ok := parseColumnDefinitions(tokens, cursor, tokenFromSymbol(rightparenSymbol))
+	if !ok {
+		return nil, initialCursor, false
+	}
+	cursor = newCursor
+
+	if !expectToken(tokens, cursor, tokenFromSymbol(rightparenSymbol)) {
+		helpMessage(tokens, cursor, "Expected right parenthesis ')'")
+		return nil, initialCursor, false
+	}
+	cursor++
+
+	return &CreateTableStatement{
+		name: *tableName,
+		cols: cols,
+	}, cursor, true
+}
+
 func parseExpressions(tokens []*token, initialCursor uint, delimiters []token) (*[]*expression, uint, bool) {
 	cursor := initialCursor
 
@@ -163,6 +282,54 @@ func parseToken(tokens []*token, initialCursor uint, kind tokenKind) (*token, ui
 		return current, cursor + 1, true
 	}
 	return nil, initialCursor, false
+}
+
+func parseColumnDefinitions(tokens []*token, initialCursor uint, delimiter token) (*[]*columnDefinition, uint, bool) {
+	cursor := initialCursor
+
+	cds := []*columnDefinition{}
+	for {
+		if cursor >= uint(len(tokens)) {
+			return nil, initialCursor, false
+		}
+
+		// Look for a delimiter
+		current := tokens[cursor]
+		if delimiter.equals(current) {
+			break
+		}
+
+		// Look for a comma
+		if len(cds) > 0 {
+			if !expectToken(tokens, cursor, tokenFromSymbol(commaSymbol)) {
+				helpMessage(tokens, cursor, "Expected comma")
+				return nil, initialCursor, false
+			}
+			cursor++
+		}
+
+		// Look for a column name
+		id, newCursor, ok := parseToken(tokens, cursor, identifierKind)
+		if !ok {
+			helpMessage(tokens, cursor, "Expect column name")
+			return nil, initialCursor, false
+		}
+		cursor = newCursor
+
+		// Look for a column type
+		ty, newCursor, ok := parseToken(tokens, cursor, keywordKind)
+		if !ok {
+			helpMessage(tokens, cursor, "Expected column type")
+			return nil, initialCursor, false
+		}
+		cursor = newCursor
+
+		cds = append(cds, &columnDefinition{
+			name:     *id,
+			datatype: *ty,
+		})
+	}
+	return &cds, cursor, true
 }
 
 func tokenFromKeyword(k keyword) token {
