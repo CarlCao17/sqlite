@@ -73,9 +73,9 @@ func parseStatement(tokens []*token, initialCursor uint, delimiter token) (*Stat
 // FROM
 // $table_name
 func parseSelectStatement(tokens []*token, initialCursor uint, delimiter token) (*SelectStatement, uint, bool) {
-	if len(tokens) == 0 || initialCursor >= uint(len(tokens)) {
-		return nil, initialCursor, false
-	}
+	//if len(tokens) == 0 || initialCursor >= uint(len(tokens)) {
+	//	return nil, initialCursor, false
+	//}
 	cursor := initialCursor
 	if !expectToken(tokens, cursor, tokenFromKeyword(selectKeyword)) {
 		return nil, initialCursor, false
@@ -112,9 +112,9 @@ func parseSelectStatement(tokens []*token, initialCursor uint, delimiter token) 
 // $expression [, ...]
 // )
 func parseInsertStatement(tokens []*token, initialCursor uint, delimiter token) (*InsertStatement, uint, bool) {
-	if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
-		return nil, initialCursor, false
-	}
+	//if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
+	//	return nil, initialCursor, false
+	//}
 	cursor := initialCursor
 	// Look for INSERT
 	if !expectToken(tokens, cursor, tokenFromKeyword(insertKeyword)) {
@@ -177,16 +177,20 @@ func parseInsertStatement(tokens []*token, initialCursor uint, delimiter token) 
 // [$column_name $column_type [,...]]
 // )
 func parseCreateTableStatement(tokens []*token, initialCursor uint, delimiters token) (*CreateTableStatement, uint, bool) {
-	if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
-		return nil, initialCursor, false
-	}
+	//if len(tokens) == 0 || initialCursor > uint(len(tokens)) {
+	//	return nil, initialCursor, false
+	//}
 	cursor := initialCursor
 
 	// Look for CREATE TABLE
-	if !expectToken(tokens, cursor, tokenFromKeyword(createKeyword)) || !expectToken(tokens, cursor, tokenFromKeyword(tableKeyword)) {
+	if !expectToken(tokens, cursor, tokenFromKeyword(createKeyword)) {
 		return nil, initialCursor, false
 	}
-	cursor += 2
+	cursor++
+	if !expectToken(tokens, cursor, tokenFromKeyword(tableKeyword)) {
+		return nil, initialCursor, false
+	}
+	cursor++
 
 	// Look for table name
 	tableName, newCursor, ok := parseToken(tokens, cursor, identifierKind)

@@ -19,15 +19,18 @@ var (
 		string(selectKeyword),
 		string(fromKeyword),
 		string(insertKeyword),
-		string(whereKeyword),
-		string(asKeyword),
+		string(intoKeyword),
 		string(tableKeyword),
 		string(createKeyword),
 		string(valuesKeyword),
-		string(updateKeyword),
-		string(deleteKeyword),
+
 		string(intKeyword),
 		string(textKeyword),
+
+		string(updateKeyword),
+		string(deleteKeyword),
+		string(asKeyword),
+		string(whereKeyword),
 	}
 )
 
@@ -113,13 +116,11 @@ func lexIdentifier(source string, ic cursor) (*token, cursor, bool) {
 	if !isAlphabetical {
 		return nil, ic, false
 	}
-	cur.pointer++
-	cur.loc.col++
 
 	var value []byte
 	for cur.pointer < uint(len(source)) {
-		c := source[cur.pointer]
-		isAlphabetical := c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+		c = source[cur.pointer]
+		isAlphabetical = c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
 		isDigit := c >= '0' && c <= '9'
 		isValidSymbol := c == '$' || c == '_'
 		if isAlphabetical || isDigit || isValidSymbol {
@@ -222,6 +223,8 @@ func lexCharacterDelimited(source string, ic cursor, delimiter byte) (*token, cu
 	}
 	cur.pointer++
 	cur.loc.col++
+	// delimit the left quote
+	ic = cur
 
 	var value []byte
 	for ; cur.pointer < uint(len(source)); cur.pointer++ {
@@ -230,6 +233,9 @@ func lexCharacterDelimited(source string, ic cursor, delimiter byte) (*token, cu
 		if c == delimiter {
 			// SQL escapes are via double characters, not backslash.
 			if cur.pointer+1 >= uint(len(source)) || source[cur.pointer+1] != delimiter {
+				// delimit the right quote
+				cur.pointer++
+				cur.loc.col++
 				return &token{
 					value: string(value),
 					kind:  stringKind,
@@ -249,7 +255,7 @@ func lexCharacterDelimited(source string, ic cursor, delimiter byte) (*token, cu
 func longestMatch(source string, ic cursor, options []string) string {
 	var value []byte
 	var match string
-	var skipList []int
+	skipOptions := make(map[string]bool)
 
 	cur := ic
 	for cur.pointer < uint(len(source)) {
@@ -257,16 +263,13 @@ func longestMatch(source string, ic cursor, options []string) string {
 		value = append(value, ch)
 		cur.pointer++
 
-	match:
-		for i, option := range options {
-			for _, skip := range skipList {
-				if i == skip {
-					continue match
-				}
+		for _, option := range options {
+			if _, exist := skipOptions[option]; exist {
+				continue
 			}
 
 			if string(value) == option {
-				skipList = append(skipList, i)
+				skipOptions[option] = true
 				if len(option) > len(match) {
 					match = option
 				}
@@ -275,10 +278,10 @@ func longestMatch(source string, ic cursor, options []string) string {
 			hasCommonPrefix := string(value) == option[:len(value)]
 			tooLong := len(value) > len(option)
 			if tooLong || !hasCommonPrefix {
-				skipList = append(skipList, i)
+				skipOptions[option] = true
 			}
 		}
-		if len(skipList) == len(options) {
+		if len(skipOptions) == len(options) {
 			break
 		}
 	}

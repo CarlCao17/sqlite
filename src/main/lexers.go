@@ -9,11 +9,14 @@ const (
 	fromKeyword   keyword = "from"
 	whereKeyword  keyword = "where"
 	asKeyword     keyword = "as"
-	tableKeyword  keyword = "table"
+
 	createKeyword keyword = "create"
+	tableKeyword  keyword = "table"
+
 	insertKeyword keyword = "insert"
 	intoKeyword   keyword = "into"
 	valuesKeyword keyword = "values"
+
 	updateKeyword keyword = "update"
 	deleteKeyword keyword = "delete"
 

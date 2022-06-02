@@ -19,7 +19,6 @@ func main() {
 			panic(err)
 		}
 		text = strings.TrimSpace(text)
-		text = strings.Replace(text, "\n", "", -1)
 
 		ast, err := Parse(text)
 		if err != nil {

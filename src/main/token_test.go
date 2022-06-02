@@ -1,13 +1,17 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func Test_lex(t *testing.T) {
+	type testCase struct {
+		source string
+		t      []*token
+		err    error
+	}
 	Convey("edge case", t, func() {
 		source := ""
 		expectTokens := []*token{}
@@ -17,14 +21,189 @@ func Test_lex(t *testing.T) {
 	})
 
 	Convey("normal case", t, func() {
-		testCases := map[string]struct {
-			t   []*token
-			err error
-		}{}
-		for source, expect := range testCases {
-			gotTokens, err := lex(source)
-			So(gotTokens, ShouldResemble, expect.t)
-			So(err, ShouldBeNil)
+		testCases := map[string]testCase{
+			"create statement": {
+				source: "CREATE TABLE users (id INT, name TEXT);",
+				t: []*token{
+					{
+						value: "create",
+						kind:  keywordKind,
+						loc:   location{0, 0},
+					},
+					{
+						value: "table",
+						kind:  keywordKind,
+						loc:   location{0, 7},
+					},
+					{
+						value: "users",
+						kind:  identifierKind,
+						loc:   location{0, 13},
+					},
+					{
+						value: "(",
+						kind:  symbolKind,
+						loc:   location{0, 19},
+					},
+					{
+						value: "id",
+						kind:  identifierKind,
+						loc:   location{0, 20},
+					},
+					{
+						value: "int",
+						kind:  keywordKind,
+						loc:   location{0, 23},
+					},
+					{
+						value: ",",
+						kind:  symbolKind,
+						loc:   location{0, 26},
+					},
+					{
+						value: "name",
+						kind:  identifierKind,
+						loc:   location{0, 28},
+					},
+					{
+						value: "text",
+						kind:  keywordKind,
+						loc:   location{0, 33},
+					},
+					{
+						value: ")",
+						kind:  symbolKind,
+						loc:   location{0, 37},
+					},
+					{
+						value: ";",
+						kind:  symbolKind,
+						loc:   location{0, 38},
+					},
+				},
+				err: nil,
+			},
+			"insert into statement": {
+				source: "INSERT INTO users VALUES (1, \"Phil\");",
+				t: []*token{
+					{
+						value: "insert",
+						kind:  keywordKind,
+						loc:   location{0, 0},
+					},
+					{
+						value: "into",
+						kind:  keywordKind,
+						loc:   location{0, 7},
+					},
+					{
+						value: "users",
+						kind:  identifierKind,
+						loc:   location{0, 12},
+					},
+					{
+						value: "values",
+						kind:  keywordKind,
+						loc:   location{0, 18},
+					},
+					{
+						value: "(",
+						kind:  symbolKind,
+						loc:   location{0, 25},
+					},
+					{
+						value: "1",
+						kind:  numericKind,
+						loc:   location{0, 26},
+					},
+					{
+						value: ",",
+						kind:  symbolKind,
+						loc:   location{0, 27},
+					},
+					{
+						value: "Phil",
+						kind:  stringKind,
+						loc:   location{0, 30},
+					},
+					{
+						value: ")",
+						kind:  symbolKind,
+						loc:   location{0, 35},
+					},
+					{
+						value: ";",
+						kind:  symbolKind,
+						loc:   location{0, 36},
+					},
+				},
+				err: nil,
+			},
+			"select statement": {
+				source: "SELECT id, name, age, addr FROM users;",
+				t: []*token{
+					{
+						value: "select",
+						kind:  keywordKind,
+						loc:   location{0, 0},
+					},
+					{
+						value: "id",
+						kind:  identifierKind,
+						loc:   location{0, 7},
+					},
+					{
+						value: ",",
+						kind:  symbolKind,
+						loc:   location{0, 9},
+					},
+					{
+						value: "name",
+						kind:  identifierKind,
+						loc:   location{0, 11},
+					},
+					{
+						value: ",",
+						kind:  symbolKind,
+						loc:   location{0, 15},
+					},
+					{
+						value: "age",
+						kind:  identifierKind,
+						loc:   location{0, 17},
+					},
+					{
+						value: ",",
+						kind:  symbolKind,
+						loc:   location{0, 20},
+					},
+					{
+						value: "addr",
+						kind:  identifierKind,
+						loc:   location{0, 22},
+					},
+					{
+						value: "from",
+						kind:  keywordKind,
+						loc:   location{0, 27},
+					},
+					{
+						value: "users",
+						kind:  identifierKind,
+						loc:   location{0, 32},
+					},
+					{
+						value: ";",
+						kind:  symbolKind,
+						loc:   location{0, 37},
+					},
+				},
+			},
+		}
+		for _, c := range testCases {
+			gotTokens, err := lex(c.source)
+			So(gotTokens, ShouldResemble, c.t)
+			So(err, ShouldEqual, c.err)
 		}
 	})
 }
@@ -507,54 +686,9 @@ func Test_lexIdentifier(t *testing.T) {
 }
 
 func Test_lexCharacterDelimited(t *testing.T) {
-	type args struct {
-		source    string
-		ic        cursor
-		delimiter byte
-	}
-	tests := []struct {
-		name  string
-		args  args
-		want  *token
-		want1 cursor
-		want2 bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, got2 := lexCharacterDelimited(tt.args.source, tt.args.ic, tt.args.delimiter)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("lexCharacterDelimited() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("lexCharacterDelimited() got1 = %v, want %v", got1, tt.want1)
-			}
-			if got2 != tt.want2 {
-				t.Errorf("lexCharacterDelimited() got2 = %v, want %v", got2, tt.want2)
-			}
-		})
-	}
+	
 }
 
 func Test_longestMatch(t *testing.T) {
-	type args struct {
-		source  string
-		ic      cursor
-		options []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := longestMatch(tt.args.source, tt.args.ic, tt.args.options); got != tt.want {
-				t.Errorf("longestMatch() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+
 }
