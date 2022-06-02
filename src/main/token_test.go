@@ -685,8 +685,90 @@ func Test_lexIdentifier(t *testing.T) {
 
 }
 
+func Test_lexString(t *testing.T) {
+
+}
+
 func Test_lexCharacterDelimited(t *testing.T) {
-	
+	type args struct {
+		source    string
+		ic        cursor
+		delimiter byte
+	}
+	type testCase struct {
+		name  string
+		args  args
+		want  *token
+		want1 cursor
+		want2 bool
+	}
+
+	Convey("test case", t, func() {
+		testCases := []testCase{
+			{
+				name: "an SQL splitting with ; and start from pos 0",
+				args: args{
+					source:    ";select name, age, addr from db.table;",
+					ic:        cursor{0, location{0, 0}},
+					delimiter: byte(';'),
+				},
+				want: &token{
+					value: "select name, age, addr from db.table",
+					kind:  stringKind,
+					loc:   location{0, 1},
+				},
+				want1: cursor{38, location{0, 38}},
+				want2: true,
+			},
+			{
+				name: "nested with single-quote",
+				args: args{
+					source:    "\"This is a addr 'hhh'\"",
+					ic:        cursor{0, location{0, 0}},
+					delimiter: byte('"'),
+				},
+				want: &token{
+					value: "This is a addr 'hhh'",
+					kind:  stringKind,
+					loc:   location{0, 1},
+				},
+				want1: cursor{22, location{0, 22}},
+				want2: true,
+			},
+			{
+				name: "nested with double-quote",
+				args: args{
+					source:    "prefix: \n\"This is a addr \"hhh\"\"",
+					ic:        cursor{9, location{1, 0}},
+					delimiter: byte('"'),
+				},
+				want: &token{
+					value: "This is a addr ",
+					kind:  stringKind,
+					loc:   location{1, 1},
+				},
+				want1: cursor{26, location{1, 17}},
+				want2: true,
+			},
+			{
+				name: "continue the token parsing that nested with double-quote",
+				args: args{
+					source:    "prefix: \n\"This is a addr \"hhh\"\"",
+					ic:        cursor{26, location{1, 17}},
+					delimiter: byte('"'),
+				},
+				want:  nil,
+				want1: cursor{26, location{1, 17}},
+				want2: false,
+			},
+		}
+		for _, c := range testCases {
+			got, got1, got2 := lexCharacterDelimited(c.args.source, c.args.ic, c.args.delimiter)
+			So(got, ShouldResemble, c.want)
+			So(got1, ShouldResemble, c.want1)
+			So(got2, ShouldEqual, c.want2)
+		}
+	})
 }
 
 func Test_longestMatch(t *testing.T) {

@@ -208,7 +208,8 @@ func lexString(source string, ic cursor) (*token, cursor, bool) {
 	return lexCharacterDelimited(source, ic, '\'')
 }
 
-// lexCharacterDelimited does not allow nested delimter
+// lexCharacterDelimited find the token that ended up with delimiter
+// does not allow nested delimiter
 // for example: source is a = 'c''bc''b', then will recognize that string equals to c"bc
 //						"a = 'c"bc''"'
 func lexCharacterDelimited(source string, ic cursor, delimiter byte) (*token, cursor, bool) {

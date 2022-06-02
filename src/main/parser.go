@@ -80,6 +80,7 @@ func parseSelectStatement(tokens []*token, initialCursor uint, delimiter token) 
 	if !expectToken(tokens, cursor, tokenFromKeyword(selectKeyword)) {
 		return nil, initialCursor, false
 	}
+	cursor++
 	slct := SelectStatement{}
 
 	exps, newCursor, ok := parseExpressions(tokens, cursor, []token{tokenFromKeyword(fromKeyword)})
